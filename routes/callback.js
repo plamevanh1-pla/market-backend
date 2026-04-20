@@ -2,25 +2,26 @@
 const router = express.Router();
 const { createClient } = require("@supabase/supabase-js");
 
-// Supabase
 const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
+  process.env.SUPABASE_URL || "",
+  process.env.SUPABASE_SERVICE_KEY || ""
 );
 
-// 📩 PayDunya callback
 router.post("/", async (req, res) => {
   try {
     const { productId, userId, amount, status } = req.body;
 
-    // 💾 SAVE ORDER
+    if (!productId || !userId) {
+      return res.status(400).json({ error: "Missing data" });
+    }
+
     const { data, error } = await supabase
       .from("orders")
       .insert([
         {
           product_id: productId,
           user_id: userId,
-          amount: amount,
+          amount,
           status: status || "paid",
         },
       ]);
@@ -35,6 +36,7 @@ router.post("/", async (req, res) => {
       message: "Order saved",
       data,
     });
+
   } catch (err) {
     console.log(err);
     res.status(500).json({ error: "Server error" });
