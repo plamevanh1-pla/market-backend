@@ -6,6 +6,10 @@ router.post("/", async (req, res) => {
   try {
     const { product, user } = req.body;
 
+    if (!product || !user) {
+      return res.status(400).json({ error: "Missing data" });
+    }
+
     const payload = {
       invoice: {
         total_amount: product.price,
@@ -20,8 +24,12 @@ router.post("/", async (req, res) => {
         product_id: product.id,
       },
       actions: {
-        return_url: "myapp://success",
-        cancel_url: "myapp://cancel",
+         return_url: "https://google.com",
+         cancel_url: "https://google.com",
+
+        // 🔥 IMPORTANT (callback backend)
+        callback_url:
+          "https://market-backend-ngcw.onrender.com/api/callback",
       },
     };
 
@@ -38,13 +46,35 @@ router.post("/", async (req, res) => {
       }
     );
 
-    res.json({
-      url: response.data.response_text,
+    // 🔥 LIEN PAYDUNYA
+    const paymentUrl =
+      response.data?.response_text ||
+      response.data?.response?.url ||
+      response.data?.response?.redirect_url;
+
+    if (!paymentUrl) {
+      return res.status(500).json({
+        error: "No payment URL returned",
+        debug: response.data,
+      });
+    }
+
+    // ✅ RETURN FRONTEND
+    return res.json({
+      url: paymentUrl,
+      productId: product.id,
+      userId: user.id,
+      amount: product.price,
     });
+
   } catch (err) {
-    console.log("PAY ERROR:", err.message);
-    res.status(500).json({ error: "payment failed" });
+    console.log("❌ PAY ERROR:", err.response?.data || err.message);
+
+    return res.status(500).json({
+      error: "payment failed",
+    });
   }
 });
 
 module.exports = router;
+    
